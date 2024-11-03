@@ -1,0 +1,42 @@
+{
+    "models": [
+        {
+            "classname": "Walker",
+            "code": "class Walker(Base):\n    \"\"\"description: Represents a person who walks dogs for owners.\"\"\"\n    __tablename__ = 'walker'\n\n    id = Column(Integer, primary_key=True, autoincrement=True)\n    first_name = Column(String, nullable=False)\n    last_name = Column(String, nullable=False)\n    postal_code = Column(String, nullable=False)\n    phone = Column(String, nullable=False)\n    email = Column(String, nullable=False)\n    max_dogs_per_walk = Column(Integer, nullable=False)\n    price_for_small = Column(Float, nullable=False)\n    price_for_medium = Column(Float, nullable=False)\n    price_for_large = Column(Float, nullable=False)\n    created_date = Column(DateTime, default=datetime.datetime.utcnow)\n    updated_date = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)\n    created_by = Column(String, nullable=True)",
+            "description": "Represents a person who walks dogs for owners.",
+            "name": "Walker"
+        },
+        {
+            "classname": "Owner",
+            "code": "class Owner(Base):\n    \"\"\"description: Represents a dog owner.\"\"\"\n    __tablename__ = 'owner'\n\n    id = Column(Integer, primary_key=True, autoincrement=True)\n    name = Column(String, nullable=False)\n    address = Column(String, nullable=False)\n    phone = Column(String, nullable=False)\n    email = Column(String, nullable=False)\n    created_date = Column(DateTime, default=datetime.datetime.utcnow)\n    updated_date = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)\n    created_by = Column(String, nullable=True)",
+            "description": "Represents a dog owner.",
+            "name": "Owner"
+        },
+        {
+            "classname": "Dog",
+            "code": "class Dog(Base):\n    \"\"\"description: Represents a dog owned by a dog owner.\"\"\"\n    __tablename__ = 'dog'\n\n    id = Column(Integer, primary_key=True, autoincrement=True)\n    owner_id = Column(Integer, ForeignKey('owner.id'), nullable=False)\n    name = Column(String, nullable=False)\n    breed = Column(String, nullable=False)\n    size = Column(String, nullable=False)  # Values: small, medium, large\n    notes = Column(String, nullable=True)\n    created_date = Column(DateTime, default=datetime.datetime.utcnow)\n    updated_date = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)\n    created_by = Column(String, nullable=True)",
+            "description": "Represents a dog owned by a dog owner.",
+            "name": "Dog"
+        },
+        {
+            "classname": "WalkRequest",
+            "code": "class WalkRequest(Base):\n    \"\"\"description: Represents a walk request from an owner for their dog(s).\"\"\"\n    __tablename__ = 'walk_request'\n\n    id = Column(Integer, primary_key=True, autoincrement=True)\n    owner_id = Column(Integer, ForeignKey('owner.id'), nullable=False)\n    dog_id = Column(Integer, ForeignKey('dog.id'), nullable=False)\n    walker_id = Column(Integer, ForeignKey('walker.id'), nullable=True)  # Initially null until assigned\n    status = Column(String, default=\"Pending\")\n    day_of_week = Column(String, nullable=False)  # Values: Mon, Tues, Wed, Thurs, Fri, Sat, Sun\n    time_of_day = Column(String, nullable=False)  # Values: morning, afternoon\n    created_date = Column(DateTime, default=datetime.datetime.utcnow)\n    updated_date = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)\n    created_by = Column(String, nullable=True)",
+            "description": "Represents a walk request from an owner for their dog(s).",
+            "name": "WalkRequest"
+        }
+    ],
+    "rules": [
+        {
+            "name": "Walker Price Constraint",
+            "description": "Ensure the walker's stated price is within the range of $10 to $50 for each dog size.",
+            "code": "Rule.constraint(validate=Walker,\n                as_condition=lambda row: 10 <= row.price_for_small <= 50 and\n                                        10 <= row.price_for_medium <= 50 and\n                                        10 <= row.price_for_large <= 50,\n                error_msg='Price for walks must be between $10 and $50.')"
+        },
+        {
+            "name": "Assign Walker to WalkRequest Based on Availability",
+            "description": "Assign a walker to a walk request based on matching availability, maximum dogs allowed, and dog size.",
+            "code": "Rule.sum(derive=WalkRequest.walker_id, as_sum_of=Walker.id,\n          where=lambda rw: rw.Walker.day_of_week == rw.WalkRequest.day_of_week and\n                          rw.Walker.max_dogs_per_walk >= rw.WalkRequest.dog_count)"
+        }
+    ],
+    "test_data": "walker1 = Walker(\n    first_name=\"John\",\n    last_name=\"Doe\",\n    postal_code=\"12345\",\n    phone=\"123-456-7890\",\n    email=\"john.doe@example.com\",\n    max_dogs_per_walk=3,\n    price_for_small=15.0,\n    price_for_medium=20.0,\n    price_for_large=25.0,\n    created_by=\"system_admin\"\n)\n\nwalker2 = Walker(\n    first_name=\"Jane\",\n    last_name=\"Smith\",\n    postal_code=\"54321\",\n    phone=\"987-654-3210\",\n    email=\"jane.smith@example.com\",\n    max_dogs_per_walk=2,\n    price_for_small=12.0,\n    price_for_medium=18.0,\n    price_for_large=24.0,\n    created_by=\"system_admin\"\n)\n\nowner1 = Owner(\n    name=\"Alice Johnson\",\n    address=\"789 Oak Street\",\n    phone=\"555-123-4567\",\n    email=\"alice.johnson@example.com\",\n    created_by=\"system_admin\"\n)\n\nowner2 = Owner(\n    name=\"Bob Williams\",\n    address=\"456 Pine Avenue\",\n    phone=\"555-987-6543\",\n    email=\"bob.williams@example.com\",\n    created_by=\"system_admin\"\n)\n\ndog1 = Dog(\n    owner_id=1,\n    name=\"Buddy\",\n    breed=\"Golden Retriever\",\n    size=\"large\",\n    notes=\"Loves to play fetch\",\n    created_by=\"system_admin\"\n)\n\ndog2 = Dog(\n    owner_id=1,\n    name=\"Charlie\",\n    breed=\"Beagle\",\n    size=\"medium\",\n    notes=\"Very friendly\",\n    created_by=\"system_admin\"\n)\n\nwalk_request1 = WalkRequest(\n    owner_id=1,\n    dog_id=1,\n    day_of_week=\"Mon\",\n    time_of_day=\"morning\",\n    created_by=\"alice.johnson\"\n)\n\nwalk_request2 = WalkRequest(\n    owner_id=2,\n    dog_id=2,\n    day_of_week=\"Wed\",\n    time_of_day=\"afternoon\",\n    created_by=\"bob.williams\"\n)",
+    "name": "DogWalkerManagementSystem"
+}
